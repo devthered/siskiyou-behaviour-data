@@ -5,9 +5,7 @@ aggregate_subjects <- function(boris_data) {
   deployment_subjects <- boris_data %>%
     group_by(Deployment.id) %>%
     summarize(Subjects = list(unique(Subject))) %>%
-    ungroup() %>%
-    # extract puma name from Deployment.id
-    mutate(Puma.name = sapply(strsplit(Deployment.id, "_"), '[', 1))
+    ungroup()
   
   # regular expression to match puma names
   PUMA_REGEX <- "\\d+[MF]|PUMA.*|KITTEN[123]"
