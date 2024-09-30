@@ -2,8 +2,8 @@ library(dplyr)
 library(tidyr)
 
 source("datetime_string_fns.R")
-source("aggregate_subjects.R")
-source("puma_non_feeding_behaviours.R")
+source("summarize_observed_subjects.R")
+source("summarize_puma_non_feeding_behaviours.R")
 source("summarize_carnivore_feeding_times.R")
 
 # Read in all boris data and clean up
@@ -67,7 +67,7 @@ deployment_metadata <- read.csv("XR6 Cameras.csv") %>%
   arrange(Puma.id, Setup.date)
 
 # Get counts and lists of pumas and species at each deployment
-deployment_subjects <- aggregate_subjects(boris_data) %>%
+observed_subjects <- summarize_observed_subjects(boris_data) %>%
   # extract puma name from Deployment.id
   mutate(Puma.id = sapply(strsplit(Deployment.id, "_"), '[', 1)) %>%
   # extract date from Deployment.id 
@@ -90,7 +90,7 @@ deployment_subjects <- aggregate_subjects(boris_data) %>%
 # Join metadata to species counts
 deployment_data <- full_join(
   deployment_metadata, 
-  deployment_subjects, 
+  observed_subjects, 
   by = c("Puma.id", "Setup.date"))
 
 # join non-feeding puma behaviour counts to deployment data

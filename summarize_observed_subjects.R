@@ -1,6 +1,6 @@
 library(dplyr)
 
-aggregate_subjects <- function(boris_data) {
+summarize_observed_subjects <- function(boris_data) {
   # Aggregate subjects for each deployment
   deployment_subjects <- boris_data %>%
     group_by(Deployment.id) %>%
