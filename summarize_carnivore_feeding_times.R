@@ -7,8 +7,6 @@ summarize_carnivore_feeding_times <- function(boris_data) {
   # NOTE: May overinflate feeding times for group feeders, 
   # as it assumes all group members are feeding simultaneously for 100% of recorded time.
   non_puma_feeding_times <- boris_data %>%
-    # NZ spelling
-    rename(Behaviour = Behavior) %>%
     # not interested in pumas here
     filter(!grepl(PUMA_REGEX, Subject)) %>%
     # only interested in feeding behaviours
@@ -69,8 +67,8 @@ summarize_carnivore_feeding_times <- function(boris_data) {
     summarize(Total.Feeding.Time = sum(Total.Feeding.Time), .groups = 'drop') %>%
     pivot_wider(names_from = Subject,
                 values_from = Total.Feeding.Time,
-                values_fill = 0) %>%
-    select(order(colnames(.))) %>% # sort columns alphabetically
+                values_fill = 0,
+                names_sort = TRUE) %>%
     select(
       Deployment.id,
       everything(),

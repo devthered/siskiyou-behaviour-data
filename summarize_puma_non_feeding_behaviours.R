@@ -2,13 +2,11 @@ summarize_puma_non_feeding_behaviours <- function(boris_data) {
   
   # Count up puma non-feeding behaviours
   aggregated_puma_behaviours <- boris_data %>%
-    # NZ spelling
-    rename(Behaviour = Behavior) %>%
     # consolidate puma and kitten behaviours
     mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "Puma", Subject)) %>%
     mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "Kitten", Subject)) %>%
     # filter out non-puma behaviours
-    filter(Subject == "Puma" | Subject == "Puma") %>%
+    filter(Subject == "Puma" | Subject == "Kitten") %>%
     # filter out unspecified or feeding behaviours
     filter(
       Behaviour != "feed"

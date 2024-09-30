@@ -2,9 +2,6 @@ library(dplyr)
 library(tidyr)
 
 source("datetime_string_fns.R")
-source("summarize_observed_subjects.R")
-source("summarize_puma_non_feeding_behaviours.R")
-source("summarize_carnivore_feeding_times.R")
 
 # Read in all boris data and clean up
 boris_data <- read.csv("combined_boris_data.csv")
@@ -27,7 +24,9 @@ boris_data <- boris_data %>%
   mutate(Deployment.id = ifelse(Deployment.id == "8F_Mar18", "8F_28Mar18", Deployment.id)) %>%
   mutate(Deployment.id = ifelse(Deployment.id == "8F_14Dec19", "8F_14Dec18", Deployment.id)) %>%
   # remove unnecessary columns
-  select(Deployment.id, everything(), -Behavioral.category, -FPS)
+  select(Deployment.id, everything(), -Behavioral.category, -FPS) %>%
+  # NZ spelling
+  rename(Behaviour = Behavior)
 
 
 # Get and clean up metadata from deployments
@@ -67,6 +66,7 @@ deployment_metadata <- read.csv("XR6 Cameras.csv") %>%
   arrange(Puma.id, Setup.date)
 
 # Get counts and lists of pumas and species at each deployment
+source("summarize_observed_subjects.R")
 observed_subjects <- summarize_observed_subjects(boris_data) %>%
   # extract puma name from Deployment.id
   mutate(Puma.id = sapply(strsplit(Deployment.id, "_"), '[', 1)) %>%
@@ -94,6 +94,7 @@ deployment_data <- full_join(
   by = c("Puma.id", "Setup.date"))
 
 # join non-feeding puma behaviour counts to deployment data
+source("summarize_puma_non_feeding_behaviours.R")
 puma_non_feeding_behaviours <- summarize_puma_non_feeding_behaviours(boris_data)
 deployment_data <- full_join(
   deployment_data, 
@@ -101,8 +102,22 @@ deployment_data <- full_join(
   by = "Deployment.id")
 
 # join non-puma carnivore feeding times to deployment data
+source("summarize_carnivore_feeding_times.R")
 carnivore_feeding_times <- summarize_carnivore_feeding_times(boris_data)
 deployment_data <- full_join(
   deployment_data, 
   carnivore_feeding_times, 
   by = "Deployment.id")
+
+# join puma feeding statistics to deployment data
+source("summarize_puma_feeding.R")
+puma_feeding_stats_by_deployment <- summarize_puma_feeding(boris_data)
+deployment_data <- full_join(
+  deployment_data, 
+  puma_feeding_stats_by_deployment, 
+  by = "Deployment.id")
+
+# remove entries with no camera footage
+deployment_data <- deployment_data %>%
+  filter(!is.na(Deployment.id)) %>%
+  select(-Deployment.id)
