@@ -26,23 +26,28 @@ boris_data <- boris_data %>%
   # remove unnecessary columns
   select(Deployment.id, everything(), -Behavioral.category, -FPS)
 
+# Get counts and lists of pumas and species at each deployment
 deployment_subjects <- aggregate_subjects(boris_data) %>%
   # extract puma name from Deployment.id
   mutate(Puma.id = sapply(strsplit(Deployment.id, "_"), '[', 1)) %>%
   # extract date from Deployment.id 
   mutate(Setup.date = convert_date_format(
     sapply(strsplit(Deployment.id, "_"), '[', 2))) %>%
+  # count values in list columns
+  mutate(Unique.pumas = sapply(Pumas, length)) %>%
+  mutate(Species.richness = sapply(Species, length)) %>%
   # preferred order
   select(
     Puma.id,
     Setup.date,
     Deployment.id,
-    First.obs,
-    Last.obs,
+    Unique.pumas,
+    Species.richness,
     Pumas,
     Species) %>%
   arrange(Puma.id, Setup.date)
 
+# Get and clean up metadata from deployments
 deployment_metadata <- read.csv("XR6 Cameras.csv") %>%
   # convert setup date to standard format
   mutate(Setup.date = sprintf("%04d-%02d-%02d", Setup_year, Setup_month, Setup_day)) %>%
@@ -78,8 +83,58 @@ deployment_metadata <- read.csv("XR6 Cameras.csv") %>%
     -Setup_crew) %>%
   arrange(Puma.id, Setup.date)
 
+# Join metadata to species counts
 deployment_data <- full_join(
   deployment_metadata, 
   deployment_subjects, 
   by = c("Puma.id", "Setup.date"))
+
+# Count behaviours for each subject at each deployment
+aggregated_behaviours <- boris_data %>%
+  # multiply feeding time by number of individuals when multiple individuals are present (non-puma only)
+  mutate(Modifiers = ifelse(Modifiers == "None", "0", Modifiers)) %>%
+  mutate(Modifiers = ifelse(Modifiers == "", "0", Modifiers)) %>%
+  mutate(Feeding.Time.Per.Individual = ifelse(is.na(Modifiers), Duration..s., as.numeric(Modifiers) * Duration..s.)) %>%
+  mutate(Behavior = ifelse(Behavior == "feed (group)", "feed", Behavior)) %>%
+  # consolidate puma and kitten behaviours
+  mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "PUMA", Subject)) %>%
+  mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "KITTEN", Subject)) %>%
+  # sum behaviour counts and durations for each subject and behaviour
+  group_by(Deployment.id, Subject, Behavior) %>%
+  summarise(
+    Behaviour.Count = n(),
+    Total.Feeding.Time = sum(Feeding.Time.Per.Individual),
+    Mean.Feeding.Bout.Duration = mean(Feeding.Time.Per.Individual),
+    Std.Dev.Feeding.Bout.Duration = sd(Feeding.Time.Per.Individual),
+    .groups = "keep"
+  ) %>%
+  ungroup() %>%
+  # NZ spelling
+  mutate(Behaviour = Behavior) %>%
+  select(-Behavior) %>%
+  # we are really only concerned with feeding and puma behaviours
+  filter(Behaviour != "repeat feeding" & Behaviour != "other" & Behaviour != "unknown") %>%
+  arrange(Deployment.id, Subject, Behaviour)
+
+# count up non-feeding behaviours for pumas
+behaviour_counts <- aggregated_behaviours %>%
+  filter(Subject == "PUMA" | Subject == "KITTEN") %>%
+  filter(Behaviour != "feed") %>%
+  pivot_wider(names_from = c(Subject, Behaviour),
+              values_from = Behaviour.Count,
+              values_fill = 0,
+              names_sep = " ") %>%
+  group_by(Deployment.id) %>%
+  summarise(across(everything(), \(x) sum(x, na.rm = TRUE))) %>%
+  select(-Total.Feeding.Time, -Mean.Feeding.Bout.Duration, -Std.Dev.Feeding.Bout.Duration)
+
+# sort columns alphabetically
+behaviour_counts <- behaviour_counts %>%
+  select(order(colnames(.)))
+
+deployment_data <- full_join(
+  deployment_data, 
+  behaviour_counts, 
+  by = "Deployment.id")
+
 

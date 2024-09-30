@@ -36,8 +36,6 @@ aggregate_subjects <- function(boris_data) {
   deployment_subjects <- deployment_subjects %>%
     mutate(Pumas = lapply(Subjects, get_puma_list)) %>%
     mutate(Species = lapply(Subjects, get_species_list)) %>%
-    mutate(Unique.pumas = sapply(Pumas, length)) %>%
-    mutate(Species.richness = sapply(Species, length)) %>%
     select(-Subjects) # remove Subjects column as it is not needed
   
   return(deployment_subjects)
