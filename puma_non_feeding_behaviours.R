@@ -5,10 +5,10 @@ summarize_puma_non_feeding_behaviours <- function(boris_data) {
     # NZ spelling
     rename(Behaviour = Behavior) %>%
     # consolidate puma and kitten behaviours
-    mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "PUMA", Subject)) %>%
-    mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "KITTEN", Subject)) %>%
+    mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "Puma", Subject)) %>%
+    mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "Kitten", Subject)) %>%
     # filter out non-puma behaviours
-    filter(Subject == "PUMA" | Subject == "KITTEN") %>%
+    filter(Subject == "Puma" | Subject == "Puma") %>%
     # filter out unspecified or feeding behaviours
     filter(
       Behaviour != "feed"
@@ -31,11 +31,8 @@ summarize_puma_non_feeding_behaviours <- function(boris_data) {
                 values_fill = 0,
                 names_sep = " ") %>%
     group_by(Deployment.id) %>%
-    summarise(across(everything(), \(x) sum(x, na.rm = TRUE)))
-    
-  # sort columns alphabetically
-  behaviour_summary <- behaviour_counts %>%
-    select(order(colnames(.)))
+    summarise(across(everything(), \(x) sum(x, na.rm = TRUE))) %>%
+    select(order(colnames(.))) # sort columns alphabetically
   
   return(behaviour_summary)
 }
