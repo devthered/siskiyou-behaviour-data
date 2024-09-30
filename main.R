@@ -1,7 +1,8 @@
 library(dplyr)
 
-source("aggregate_subjects.R")
 source("datetime_string_fns.R")
+source("aggregate_subjects.R")
+source("puma_non_feeding_behaviours.R")
 
 # Read in all boris data and clean up
 boris_data <- read.csv("combined_boris_data.csv")
@@ -89,52 +90,37 @@ deployment_data <- full_join(
   deployment_subjects, 
   by = c("Puma.id", "Setup.date"))
 
-# Count behaviours for each subject at each deployment
-aggregated_behaviours <- boris_data %>%
-  # multiply feeding time by number of individuals when multiple individuals are present (non-puma only)
-  mutate(Modifiers = ifelse(Modifiers == "None", "0", Modifiers)) %>%
-  mutate(Modifiers = ifelse(Modifiers == "", "0", Modifiers)) %>%
-  mutate(Feeding.Time.Per.Individual = ifelse(is.na(Modifiers), Duration..s., as.numeric(Modifiers) * Duration..s.)) %>%
-  mutate(Behavior = ifelse(Behavior == "feed (group)", "feed", Behavior)) %>%
-  # consolidate puma and kitten behaviours
-  mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "PUMA", Subject)) %>%
-  mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "KITTEN", Subject)) %>%
-  # sum behaviour counts and durations for each subject and behaviour
-  group_by(Deployment.id, Subject, Behavior) %>%
-  summarise(
-    Behaviour.Count = n(),
-    Total.Feeding.Time = sum(Feeding.Time.Per.Individual),
-    Mean.Feeding.Bout.Duration = mean(Feeding.Time.Per.Individual),
-    Std.Dev.Feeding.Bout.Duration = sd(Feeding.Time.Per.Individual),
-    .groups = "keep"
-  ) %>%
-  ungroup() %>%
-  # NZ spelling
-  mutate(Behaviour = Behavior) %>%
-  select(-Behavior) %>%
-  # we are really only concerned with feeding and puma behaviours
-  filter(Behaviour != "repeat feeding" & Behaviour != "other" & Behaviour != "unknown") %>%
-  arrange(Deployment.id, Subject, Behaviour)
-
-# count up non-feeding behaviours for pumas
-behaviour_counts <- aggregated_behaviours %>%
-  filter(Subject == "PUMA" | Subject == "KITTEN") %>%
-  filter(Behaviour != "feed") %>%
-  pivot_wider(names_from = c(Subject, Behaviour),
-              values_from = Behaviour.Count,
-              values_fill = 0,
-              names_sep = " ") %>%
-  group_by(Deployment.id) %>%
-  summarise(across(everything(), \(x) sum(x, na.rm = TRUE))) %>%
-  select(-Total.Feeding.Time, -Mean.Feeding.Bout.Duration, -Std.Dev.Feeding.Bout.Duration)
-
-# sort columns alphabetically
-behaviour_counts <- behaviour_counts %>%
-  select(order(colnames(.)))
-
+# join non-feeding puma behaviour counts to deployment data
 deployment_data <- full_join(
   deployment_data, 
-  behaviour_counts, 
+  summarize_puma_non_feeding_behaviours(boris_data), 
   by = "Deployment.id")
 
-
+# 
+# # Count behaviours for each subject at each deployment
+# aggregated_behaviours <- boris_data %>%
+#   # multiply feeding time by number of individuals when multiple individuals are present (non-puma only)
+#   mutate(Modifiers = ifelse(Modifiers == "None", "0", Modifiers)) %>%
+#   mutate(Modifiers = ifelse(Modifiers == "", "0", Modifiers)) %>%
+#   mutate(Feeding.Time.Per.Individual = ifelse(is.na(Modifiers), Duration..s., as.numeric(Modifiers) * Duration..s.)) %>%
+#   mutate(Behavior = ifelse(Behavior == "feed (group)", "feed", Behavior)) %>%
+#   # consolidate puma and kitten behaviours
+#   mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "PUMA", Subject)) %>%
+#   mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "KITTEN", Subject)) %>%
+#   # sum behaviour counts and durations for each subject and behaviour
+#   group_by(Deployment.id, Subject, Behavior) %>%
+#   summarise(
+#     Behaviour.Count = n(),
+#     Total.Feeding.Time = sum(Feeding.Time.Per.Individual),
+#     Mean.Feeding.Bout.Duration = mean(Feeding.Time.Per.Individual),
+#     Std.Dev.Feeding.Bout.Duration = sd(Feeding.Time.Per.Individual),
+#     .groups = "keep"
+#   ) %>%
+#   ungroup() %>%
+#   # NZ spelling
+#   mutate(Behaviour = Behavior) %>%
+#   select(-Behavior) %>%
+#   # we are really only concerned with feeding and puma behaviours
+#   filter(Behaviour != "repeat feeding" & Behaviour != "other" & Behaviour != "unknown") %>%
+#   arrange(Deployment.id, Subject, Behaviour)
+# 
