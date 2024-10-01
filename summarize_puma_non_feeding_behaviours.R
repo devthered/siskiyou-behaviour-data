@@ -27,10 +27,11 @@ summarize_puma_non_feeding_behaviours <- function(boris_data) {
     pivot_wider(names_from = c(Subject, Behaviour),
                 values_from = Behaviour.Count,
                 values_fill = 0,
-                names_sep = " ") %>%
+                names_sep = " ",
+                names_sort = TRUE) %>%
     group_by(Deployment.id) %>%
     summarise(across(everything(), \(x) sum(x, na.rm = TRUE))) %>%
-    select(order(colnames(.))) # sort columns alphabetically
+    ungroup()
   
   return(behaviour_summary)
 }

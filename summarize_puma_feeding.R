@@ -11,9 +11,9 @@ summarize_puma_feeding <- function(boris_data) {
     # get statistics on feeding times
     group_by(Deployment.id, Subject) %>%
     summarise(
-      `Total Feeding Time` = sum(Duration..s.),
-      `Mean Feeding Bout Duration` = mean(Duration..s.),
-      `Std Dev Feeding Bout Duration` = sd(Duration..s.),
+      `Total Feeding Time (s)` = sum(Duration..s.),
+      `Mean Feeding Bout Duration (s)` = mean(Duration..s.),
+      `Std Dev Feeding Bout Duration (s)` = sd(Duration..s.),
       .groups = "keep"
     ) %>%
     ungroup() %>%
@@ -23,9 +23,9 @@ summarize_puma_feeding <- function(boris_data) {
   feeding_summary <- aggregated_puma_feeding %>%
     pivot_wider(names_from = Subject,
                 values_from = c(
-                  "Total Feeding Time",
-                  "Mean Feeding Bout Duration",
-                  "Std Dev Feeding Bout Duration"),
+                  "Total Feeding Time (s)",
+                  "Mean Feeding Bout Duration (s)",
+                  "Std Dev Feeding Bout Duration (s)"),
                 values_fill = 0,
                 names_sep = " ")
   

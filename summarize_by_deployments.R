@@ -41,6 +41,7 @@ summarize_by_deployments <- function(boris_data, metadata_filename = "XR6 Camera
     arrange(Puma.id, Setup.date)
   
   # Get counts and lists of pumas and species at each deployment
+  # then converts Deployment.id into puma name and date for matching
   source("summarize_observed_subjects.R")
   observed_subjects <- summarize_observed_subjects(boris_data) %>%
     # extract puma name from Deployment.id
@@ -48,18 +49,8 @@ summarize_by_deployments <- function(boris_data, metadata_filename = "XR6 Camera
     # extract date from Deployment.id 
     mutate(Setup.date = convert_date_format(
       sapply(strsplit(Deployment.id, "_"), '[', 2))) %>%
-    # count values in list columns
-    mutate(Unique.pumas = sapply(Pumas, length)) %>%
-    mutate(Species.richness = sapply(Species, length)) %>%
     # preferred order
-    select(
-      Puma.id,
-      Setup.date,
-      Deployment.id,
-      Unique.pumas,
-      Species.richness,
-      Pumas,
-      Species) %>%
+    select(Puma.id, Setup.date, everything()) %>%
     arrange(Puma.id, Setup.date)
   
   # Join metadata to species counts
@@ -96,6 +87,14 @@ summarize_by_deployments <- function(boris_data, metadata_filename = "XR6 Camera
   deployment_data <- deployment_data %>%
     filter(!is.na(Deployment.id)) %>%
     select(-Deployment.id)
+  
+  # Replace NA values with 0 except for certain columns
+  deployment_data <- deployment_data %>%
+    mutate(across(
+      -c("Pickup.date",
+         "Std Dev Feeding Bout Duration (s) Puma", 
+         "Std Dev Feeding Bout Duration (s) Kitten"), 
+      ~ replace(., is.na(.), 0)))     
   
   return(deployment_data)
 }

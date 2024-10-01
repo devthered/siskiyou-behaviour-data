@@ -19,7 +19,7 @@ summarize_carnivore_feeding_times <- function(boris_data) {
     # sum behaviour counts and durations for each subject and behaviour
     group_by(Deployment.id, Subject) %>%
     summarise(
-      Total.Feeding.Time = sum(Feeding.Time.Per.Individual),
+      Total.Feeding.Time.s = sum(Feeding.Time.Per.Individual),
       .groups = "keep"
     ) %>%
     ungroup() %>%
@@ -64,9 +64,9 @@ summarize_carnivore_feeding_times <- function(boris_data) {
   # pivot to shift behavioural counts into their own columns
   non_puma_feeding_summary <- carnivore_class_feeding_times %>%
     group_by(Deployment.id, Subject) %>%
-    summarize(Total.Feeding.Time = sum(Total.Feeding.Time), .groups = 'drop') %>%
+    summarize(Total.Feeding.Time.s = sum(Total.Feeding.Time.s), .groups = 'drop') %>%
     pivot_wider(names_from = Subject,
-                values_from = Total.Feeding.Time,
+                values_from = Total.Feeding.Time.s,
                 values_fill = 0,
                 names_sort = TRUE) %>%
     select(
@@ -77,8 +77,8 @@ summarize_carnivore_feeding_times <- function(boris_data) {
       -Reptile,
       -Unknown,
     ) %>%
-    rename(`Total Feeding Time Black Bears` = `Black Bear`) %>%
-    rename(`Total Feeding Time Birds` = Bird) %>%
-    rename(`Total Feeding Time Mesocarnivores` = Mesocarnivore) %>%
-    rename(`Total Feeding Time Small Carnivores` = `Small Carnivore`)
+    rename(`Total Feeding Time (s) Black Bears` = `Black Bear`) %>%
+    rename(`Total Feeding Time (s) Birds` = Bird) %>%
+    rename(`Total Feeding Time (s) Mesocarnivores` = Mesocarnivore) %>%
+    rename(`Total Feeding Time (s) Small Carnivores` = `Small Carnivore`)
 }
