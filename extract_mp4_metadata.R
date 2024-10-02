@@ -6,6 +6,7 @@ files <- list.files("/Volumes/One Touch/Siskiyou/CamTrap/XR6", pattern = "\\.MP4
 filtered_files <- files[grepl("XR6/[0-9]+[M,F]_", files)]
 filtered_files <- sort(filtered_files)
 
+# doublecheck this: should just be videos stored in COOL_VIDEOS folder
 filtered_out_files <- files[!grepl("XR6/[0-9]+[M,F]_", files)]
 filtered_out_files <- sort(filtered_out_files)
 

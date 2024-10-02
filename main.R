@@ -45,7 +45,7 @@ boris_data <- boris_data %>%
   mutate(Deployment.id.from.filepath = str_extract(Media.file, DEPLOYMENT_ID_REGEX)) %>%
   mutate(Filename = str_extract(Media.file, FILENAME_REGEX)) %>%
   mutate(Expected.path = paste(Deployment.id.from.filepath, Filename, sep = "/")) %>%
-  mutate(Deployment.ids.match = Deployment.id == Deployment.id.from.filepath) %>%
+  mutate(Containing.folder = str_remove(Media.file, "/[^/]+$")) %>%
   arrange(Expected.path)
 
 # Confirm that extraction works and deployment id from filepath matches one from Observation.id
@@ -82,6 +82,11 @@ boris_media_files <- boris_media_files %>%
   select(-Num.expected.paths)
 # --> confirmed this is correct for our data
 
+# Get boris data with the same expected path but multiple actual source files
+boris_multiple_expected_paths <- boris_data %>%
+  group_by(Expected.path) %>%
+  filter(length(unique(Media.file)) > 1) %>%
+  ungroup()
 
 # 2. Get video filenames and expected paths
 ###########################################
@@ -89,16 +94,16 @@ boris_media_files <- boris_media_files %>%
 # Read in video metadata (CSV was produced from actual video files on hard disk)
 # Also generate the same expected filepath from these filenames
 video_metadata <- read.csv("video_metadata.csv") %>%
-  select(-X) %>%
-  mutate(Original.filename = Filename) %>%
-  mutate(Original.filename = gsub("April", "Apr", Original.filename)) %>% # fix error in some names so regex matches
-  mutate(Deployment.id.from.filepath = str_extract(Original.filename, DEPLOYMENT_ID_REGEX)) %>%
-  mutate(Filename = str_extract(Original.filename, FILENAME_REGEX)) %>%
-  mutate(Expected.path = paste(Deployment.id.from.filepath, Filename, sep = "/")) %>%
+  mutate(Fixed.path = gsub("April", "Apr", SourceFile)) %>% # fix error in some names so regex matches
+  mutate(Deployment.id = str_extract(Fixed.path, DEPLOYMENT_ID_REGEX)) %>%
+  mutate(Filename = str_extract(Fixed.path, FILENAME_REGEX)) %>%
+  mutate(Expected.path = paste(Deployment.id, Filename, sep = "/")) %>%
+  mutate(Truncated.fixed.path = sub("/Volumes/One Touch/Siskiyou/CamTrap/XR6/", "", Fixed.path)) %>%
+  mutate(Containing.folder = str_remove(Truncated.fixed.path, "/[^/]+$")) %>%
   arrange(Expected.path)
 
 # Confirm extraction works and no entries are missing IDs or filenames
-videos_no_id_from_filename <- video_metadata %>% filter(is.na(Deployment.id.from.filepath))
+videos_no_id_from_filename <- video_metadata %>% filter(is.na(Deployment.id))
 videos_no_filename <- video_metadata %>% filter(is.na(Filename))
 if (nrow(videos_no_filename) != 0
     || nrow(videos_no_id_from_filename) != 0) {
@@ -110,8 +115,64 @@ remove(videos_no_filename)
 
 # Get videos where the actual path does not equal the expected path
 videos_path_unexpected <- video_metadata %>%
-  filter(Original.filename != Expected.path)
+  filter(Truncated.fixed.path != Expected.path) %>%
+  group_by(Deployment.id, Containing.folder) %>%
+  summarize(.groups = 'drop')
 
+# 3. Investigate funny paths
+############################
+
+# get boris folders for videos with unexpected paths on disk
+boris_unexpected_path_videos <- boris_data %>%
+  filter(Deployment.id %in% videos_path_unexpected$Deployment.id)
+  group_by(Deployment.id, Containing.folder) %>%
+  summarize(.groups = 'drop') %>%
+
+# get metadata for videos with duplicate paths in boris
+video_metadata_boris_multiples <- video_metadata %>% 
+  filter(Expected.path %in% boris_multiple_expected_paths$Expected.path) %>%
+  select(Expected.path, SourceFile)
+
+# The cleaning below was based on manual analysis of boris_multiple_expected_paths, videos_path_unexpected
+# Using boris_unexpected_path_videos and video_metadata_boris_multiples
+# After running this, every boris observation should have an Expected.path that matches a Truncated.fixed.path in video_metadata
+boris_data_cleaned <- boris_data %>%
+  # remove duplicates
+  filter(!grepl("/Volumes/Seagate Backup Plus Drive/UCSC Puma/XR6/1F_13May18/1F_13May18_B7", Media.file)) %>%
+  filter(!grepl("/Volumes/Seagate Backup Plus Drive/UCSC Puma/XR6/5M/5M_5Sep17/5M_5Sep17_B12/RCNX1100.MP4", Media.file)) %>%
+  # apply simple custom expected paths
+  mutate(Expected.path = ifelse(
+    Deployment.id == "4M_3Apr17" | Deployment.id == "4M_12Apr17",
+    paste(Deployment.id, "CAM1", Filename, sep = "/"),
+    Expected.path
+  )) %>%
+  mutate(Expected.path = ifelse(
+    Deployment.id == "7M_15Jan18",
+    paste(Deployment.id, "7M_15Jan18_A", Filename, sep = "/"),
+    Expected.path
+  )) %>%
+  mutate(Expected.path = ifelse(
+    Deployment.id == "5M_24Nov18" 
+    | Deployment.id == "7M_9Oct18" 
+    | Deployment.id == "7M_23Nov18" 
+    | Deployment.id == "9F_18Dec18"
+    | Deployment.id == "3M_26Nov18",
+    paste(Deployment.id, "100RECNX", Filename, sep = "/"),
+    Expected.path
+  )) %>%
+  mutate(Expected.path = ifelse(
+    Deployment.id == "9F_7Dec18"
+    # for the following, some videos ended up in 100RECNX and others in 101RECNX
+    | grepl("/Volumes/Seagate Backup Plus Drive/UCSC Puma/XR6/3M/3M_26Nov18/3M_26Nov18_B(16|17)", Media.file)
+    | grepl("/Volumes/Seagate Backup Plus Drive/UCSC Puma/XR6/8F/8F_14Dec18/8F_14Dec18_B(8|9|10|11)", Media.file),
+    paste(Deployment.id, "101RECNX", Filename, sep = "/"),
+    Expected.path
+  ))
+
+boris_joined_to_videos <- left_join(boris_data_cleaned, video_metadata, by = c("Expected.path" = "Truncated.fixed.path"))
+
+# TODO: clean up boris data
+# TODO: timebox observation records when checking by deployment
 
 ##################################################
 # Deployment Data: NOT INCORPORATING VIDEO TIMES #
