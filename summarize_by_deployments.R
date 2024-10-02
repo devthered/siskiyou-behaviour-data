@@ -13,6 +13,7 @@ summarize_by_deployments <- function(boris_data, metadata_filename = "XR6 Camera
       !is.na(Pickup_year) & !is.na(Pickup_month) & !is.na(Pickup_day),
       sprintf("%04d-%02d-%02d", Pickup_year, Pickup_month, Pickup_day),
       NA)) %>%
+    mutate(Days.deployed = as.integer(days_difference(Setup.date, Pickup.date))) %>%
     # rename some columns
     mutate(Setup.crew = Setup_crew) %>%
     mutate(Puma.id = Puma_ID) %>%
@@ -23,6 +24,9 @@ summarize_by_deployments <- function(boris_data, metadata_filename = "XR6 Camera
       Puma.id, 
       Setup.date,
       Pickup.date,
+      Setup.date,
+      Pickup.date,
+      Days.deployed,
       Lat,
       Long,
       Carcass.Species,
@@ -85,8 +89,7 @@ summarize_by_deployments <- function(boris_data, metadata_filename = "XR6 Camera
   
   # remove entries with no camera footage
   deployment_data <- deployment_data %>%
-    filter(!is.na(Deployment.id)) %>%
-    select(-Deployment.id)
+    filter(!is.na(Deployment.id))
   
   # Replace NA values with 0 except for certain columns
   deployment_data <- deployment_data %>%
