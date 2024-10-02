@@ -1,6 +1,10 @@
+# README
+# This file combines all the BORIS behavioural data CSVs into a single CSV.
+# This must be run to generate combined_boris_data.csv before running setup_boris_data.R
+# PATH_TO_TAG_BORIS must be set properly below.
+
 # Set Working Directory to ./TAG_BORIS
-current_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
-csv_dir <- paste(current_dir, '/TAG_BORIS', sep="")
+PATH_TO_TAG_BORIS <- "/Volumes/One Touch/Siskiyou/CamTrap/XR6/TAG_BORIS"
 setwd(csv_dir)
 
 # Get all CSV files
@@ -27,6 +31,7 @@ for (file in csv_files) {
 # Combine data frames into a single data frame
 combined_data <- do.call(rbind, csv_data_frames)
 
-# Write data to a new, combined CSV
-write.csv(combined_data, "../combined_boris_data.csv", row.names = FALSE)
-
+# Write data to a new, combined CSV in this directory
+current_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd(current_dir)
+write.csv(combined_data, "combined_boris_data.csv", row.names = FALSE)
