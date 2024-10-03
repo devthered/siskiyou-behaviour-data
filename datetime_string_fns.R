@@ -10,6 +10,11 @@ time_difference <- function(datetime1, datetime2) {
   return(difference_in_seconds)
 }
 
+# returns TRUE if datetime1 is before datetime2
+is_before <- function(datetime1, datetime2) {
+  return(time_difference(datetime1, datetime2) > 0)
+}
+
 # Calculate the difference in seconds between two datetime strings
 days_difference <- function(datetime1, datetime2) {
   # Convert the strings to POSIXct date-time objects
@@ -48,4 +53,10 @@ convert_to_deployment_id_format <- function(datestring) {
   formatted_date <- sub("^0", "", formatted_date)
   
   return(formatted_date)
+}
+
+get_behaviour_time_cutoff <- function(setup_date_string) {
+  setup_datetime <- as.POSIXct(setup_date_string)
+  new_datetime <- setup_datetime + (21.5 * 86400)  # 21 days, plus midnight to noon. 86400 seconds in a day
+  return(format(new_datetime, "%Y-%m-%d %H:%M:%S"))
 }
