@@ -234,17 +234,28 @@ class_counts = scavenger_species_breakdown %>%
   count(Class)
 
 
-#########################################
-# 4. Bar Charts: Puma feeding behaviour #
-#########################################
+########################################
+# 4. Box Plots: Puma feeding behaviour #
+########################################
 
-source("summarize_puma_feeding.R")
+# NOTE: you need deployments_with_all_stats (from main.R) for this
+deployments_with_all_stats <- read.csv("deployments_with_all_stats.csv") %>%
+  filter(N.observations > 0)
 
-ggplot(puma_feeding_times, aes(x = `Total Feeding Time (m)`)) +
-  geom_histogram(bins = 20, color = "black", fill = "#2E8B57") +
-  labs(title = "Number of Deployments by Total Puma Feeding Time",
-       x = "Total Feeding Time (minutes) over 21 Days",
-       y = "Number of Deployments") +
-  theme_minimal()
+boxplot(Total.Feeding.Time..m. ~ Bear.present, 
+        data = deployments_with_all_stats,
+        xlab = "",
+        names = c("Black bear absent", "Black bear present"),
+        ylab = "Total Puma Feeding Time (minutes)")
+boxplot(Total.Alert.Behaviour.Counts ~ Bear.present,
+        data = deployments_with_all_stats,
+        xlab = "",
+        names = c("Black bear absent", "Black bear present"),
+        ylab = "Total Puma Alert Behaviour Counts")
+boxplot(Species.richness ~ Bear.present,
+        data = deployments_with_all_stats,
+        xlab = "",
+        names = c("Black bear absent", "Black bear present"),
+        ylab = "Scavenger species richness")
 
 

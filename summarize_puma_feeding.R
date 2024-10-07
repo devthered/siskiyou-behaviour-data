@@ -4,7 +4,7 @@ library(dplyr)
 # Summarizes puma feeding times by deployment
 # Creates variable puma_feeding_times
 # BEFORE START:
-# - boris_data_pruned.csv must be present
+# - boris_data_pruned.csv deployment_data_prined.csv must be present
 # - generate these with prune_boris_and_deployment.R
 
 boris_data <- read.csv("boris_data_pruned.csv")
