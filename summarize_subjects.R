@@ -5,7 +5,7 @@ library(dplyr)
 # Creates variable subjects_by_deployment
 # BEFORE START:
 # - boris_data_pruned.csv and deployment_data_pruned.csv must be present
-# - generate these with prine_boris_and_deployment.R
+# - generate these with prune_boris_and_deployment.R
 
 boris_data <- read.csv("boris_data_pruned.csv")
 deployments <- read.csv("deployment_data_pruned.csv")
@@ -66,6 +66,9 @@ subjects_by_deployment <- subjects_by_deployment %>%
   mutate(N.kittens = sapply(Pumas, get_num_kittens)) %>%
   mutate(Uncollared.puma.present = sapply(Pumas, function(s) "PUMA uncollared" %in% s)) %>%
   mutate(Bear.present = sapply(Species, function(s) "BEAR black" %in% s)) %>%
+  mutate(Bobcat.present = sapply(Species, function(s) "BOBCAT" %in% s)) %>%
+  mutate(Coyote.present = sapply(Species, function(s) "COYOTE" %in% s)) %>%
+  mutate(Puma.present = sapply(Species, function(s) "PUMA" %in% s)) %>%
   # preferred order
   select(Deployment.id, everything(), -Subjects)
   

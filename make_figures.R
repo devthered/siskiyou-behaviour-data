@@ -2,6 +2,7 @@ library(dplyr)
 library(tidyr)
 library(ggpie)
 library(ggplot2)
+library(scales)
 
 # README
 # This file generates figures for the Data Summary Report.
@@ -142,7 +143,8 @@ ggplot(prey_demographics_summary %>% filter(Carcass.species == "Elk"), aes(x = C
 scavenger_species_breakdown <- deployments_with_subjects %>%
   select(Deployment.id, Species) %>%
   unnest(Species) %>%
-  mutate(Species = unlist(Species))
+  mutate(Species = unlist(Species)) %>%
+  filter(Species != "UNKNOWN")
 
 species_classes <- list(
   "Large Carnivore" = c(
@@ -161,15 +163,16 @@ species_classes <- list(
     "MAGPIE", "ROBIN American", "RAVEN common", 
     "THRUSH varied", "VULTURE turkey", "WOODPECKER"
   ),
-  "Human / Domestic" = c(
-    "HUMAN", "COW domestic", "DOG domestic"
-  ),
   Herbivore = c(
     "CHIPMUNK", "DEER Mule", "ELK", "LAGOMORPH",
     "SQUIRREL California ground", "SQUIRREL Douglas", 
-    "SQUIRREL golden-mantled ground", "SQUIRREL western gray"
+    "SQUIRREL golden-mantled ground", "SQUIRREL western gray",
+    "WOODRAT white-footed"
   ),
   Reptile = c("REPTILE"),
+  "Human / Domestic" = c(
+    "HUMAN", "COW domestic", "DOG domestic"
+  ),
   Other = c("UNKNOWN", "OTHER")
 )
 
@@ -179,4 +182,69 @@ scavenger_species_breakdown <- scavenger_species_breakdown %>%
     class <- names(species_classes)[sapply(species_classes, function(species) x %in% species)]
     if (length(class) == 0) return(NA) else return(class)
   })))
+
+# Count abundance of each species
+species_counts <- scavenger_species_breakdown %>%
+  count(Species, Class) %>%
+  mutate(Percent = n / 121.0)
+
+# Create a custom order for classes
+class_order <- names(species_classes)
+species_order <- unlist(species_classes)
+
+# Convert Class to a factor with the specified order
+species_counts$Class <- factor(species_counts$Class, levels = class_order)
+
+# Create a combined factor for ordering species within their class
+species_counts$Species <- factor(species_counts$Species, levels = rev(species_order))
+
+# Create horizontal bar chart with grouped bars by Class
+ggplot(species_counts, aes(x = Species, y = Percent, fill = Class)) +
+  geom_bar(stat = 'identity') +
+  coord_flip() +  # Make it horizontal
+  labs(x = 'Species',
+       y = 'Percent of puma kills where detected',
+       title = 'Species presence at monitored puma kills (n = 121)') +
+  scale_fill_manual(values = c(
+    "Large Carnivore" = "darkred", 
+    "Mesocarnivore" = "lightcoral", 
+    "Omnivore" = "orange", 
+    "Bird" = "skyblue", 
+    "Herbivore" = "lightgreen", 
+    "Reptile" = "darkgreen", 
+    "Human / Domestic" = "gray", 
+    "Other" = "darkgray"
+  )) +
+  scale_y_continuous(labels = label_percent(scale = 100),
+                     limits = c(0, 0.86),
+                     expand = c(0, 0)) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(angle = 0, hjust = 1),
+        legend.position = "inside",
+        legend.position.inside = c(0.9, 0.9),
+        legend.justification = c("right", "top"),) +
+  geom_text(aes(label = n),
+            position = position_stack(vjust = 1),
+            hjust = -0.25,
+            color = "black")
+
+class_counts = scavenger_species_breakdown %>%
+  group_by(Deployment.id, Class) %>%
+  summarize(.groups = 'drop') %>%
+  count(Class)
+
+
+#########################################
+# 4. Bar Charts: Puma feeding behaviour #
+#########################################
+
+source("summarize_puma_feeding.R")
+
+ggplot(puma_feeding_times, aes(x = `Total Feeding Time (m)`)) +
+  geom_histogram(bins = 20, color = "black", fill = "#2E8B57") +
+  labs(title = "Number of Deployments by Total Puma Feeding Time",
+       x = "Total Feeding Time (minutes) over 21 Days",
+       y = "Number of Deployments") +
+  theme_minimal()
+
 
