@@ -1,5 +1,7 @@
-library(ggplot2)
 library(dplyr)
+library(tidyr)
+library(ggpie)
+library(ggplot2)
 
 # README
 # This file generates figures for the Data Summary Report.
@@ -20,7 +22,7 @@ observations_by_puma <- read.csv("deployment_data_for_barchart.csv") %>%
   arrange(Sex, Id) %>%
   mutate(Puma.name = factor(Puma.name, levels = unique(Puma.name)))
     
-# Create the stacked bar chart
+# Create stacked bar chart
 ggplot(observations_by_puma, aes(x = Puma.name, y = Deployments, fill = Behaviours.observed)) +
   geom_bar(stat = "identity") +
   labs(title = "Observed Kills per Puma",
@@ -31,7 +33,7 @@ ggplot(observations_by_puma, aes(x = Puma.name, y = Deployments, fill = Behaviou
   theme(legend.position = "inside",
         legend.position.inside = c(0.9, 0.9),
         legend.justification = c("right", "top"),
-        legend.key.size = unit(1.5, "cm"),
+        legend.key.size = unit(1, "cm"),
         legend.text = element_text(size = 10),
         legend.title = element_blank()) +
   geom_text(aes(label = Deployments), 
@@ -40,52 +42,46 @@ ggplot(observations_by_puma, aes(x = Puma.name, y = Deployments, fill = Behaviou
             color = "black")
 
 
-###################################
-# 2. Pie Chart: Puma Demographics #
-###################################
+###########################################
+# 2. Pie and Bar Chart: Prey Demographics #
+###########################################
 
-deployments_with_subjects <- deployments %>%
-  right_join(subjects_by_deployment, by = "Deployment.id")
+source("summarize_subjects.R")
 
-pumas <- deployments_with_subjects %>%
-  group_by(Puma.name) %>%
-  summarize(N.kittens = max(N.kittens), .groups = 'drop') %>%
-  mutate(Reproductive.status = ifelse(
-    grepl("M", Puma.name),
-    "Solitary Male",
-    ifelse(
-      N.kittens == 0,
-      "Solitary Female",
-      "Female with Kittens"
-    )))
-
-ggpie(data = pumas, 
-      group_key = "Reproductive.status", 
-      count_type = "full",
-      fill_color = c("Solitary Male" = "#FF8C00", "Solitary Female" = "#1D5C3F", "Female with Kittens" = "#2E8B57"),
-      label_color = "white",
-      label_info = "count",
-      label_type = "horizon",
-      label_split = NULL,
-      label_size = 4.5, 
-      label_pos = "in") +
-  theme(legend.title = element_blank())
-
-
-####################################
-# 3. Pie Charts: Prey Demographics #
-####################################
+species_list <- c("Mule Deer", "Elk", "Unknown")
+age_list <- c("Calf", "Fawn", "Yearling", "Adult", "Unknown")
+sex_list <- c("Unknown", "Male", "Female")
 
 prey_demographics <- deployments %>%
   select(Deployment.id, Puma.name, Carcass.species, Carcass.age.sex) %>%
-  mutate(Carcass.species = ifelse(tolower(trimws(Carcass.species)) == "mule deer", "Mule Deer", Carcass.species)) %>%
-  mutate(Carcass.age.sex = tolower(trimws(Carcass.age.sex)))
+  mutate(Carcass.species = factor(ifelse(is.na(Carcass.species), 
+                                         "Unknown", 
+                                         ifelse(tolower(trimws(Carcass.species)) == "mule deer", 
+                                                "Mule Deer", "Elk")), 
+                                  levels = species_list)) %>%
+  mutate(Carcass.age.sex = tolower(trimws(Carcass.age.sex))) %>%
+  mutate(Carcass.age = factor(ifelse(grepl("adult", Carcass.age.sex), 
+                                     "Adult", 
+                                     ifelse(grepl("yearling", Carcass.age.sex), 
+                                            "Yearling", 
+                                            ifelse(grepl("fawn", Carcass.age.sex), 
+                                                   "Fawn", 
+                                                   ifelse(grepl("calf", Carcass.age.sex), 
+                                                          "Calf", "Unknown")))), 
+                              levels = age_list)) %>%
+  mutate(Carcass.sex = factor(ifelse(grepl("male|buck|bull", Carcass.age.sex), 
+                                     "Male", 
+                                     ifelse(grepl("female|doe|cow", Carcass.age.sex), 
+                                           "Female", "Unknown")), 
+                              levels = sex_list)) %>%
+  arrange(Carcass.species, Carcass.age, Carcass.sex)
 
+# Species pie chart
 ggpie(data = prey_demographics, 
       group_key = "Carcass.species", 
       count_type = "full",
       border_size = 0.5,
-      fill_color = c("Mule Deer" = "#FF8C00", "Elk" = "#1D5C3F", "NA" ),
+      fill_color = c("Mule Deer" = "#FF8C00", "Elk" = "#2E8B57", "Unknown" = "grey" ),
       label_color = "black",
       label_info = "count",
       label_type = "horizon",
@@ -94,21 +90,93 @@ ggpie(data = prey_demographics,
       label_pos = "in",
       label_threshold = 10) +
   theme(legend.position = "inside",
-        legend.position.inside = c(0.85, 0.5),
+        legend.position.inside = c(1, 0.625),
+        legend.justification = c("right", "top"),
+        legend.key.size = unit(1, "cm"),
+        legend.text = element_text(size = 10),
         legend.title = element_blank())
 
-ggpie(data = prey_demographics %>% filter(Carcass.species == "Mule Deer"), 
-      group_key = "Carcass.age.sex", 
-      count_type = "full",
-      border_size = 0.5,
-      #fill_color = c("Mule Deer" = "#FF8C00", "Elk" = "#1D5C3F", "NA" ),
-      label_color = "black",
-      label_info = "count",
-      label_type = "horizon",
-      label_split = NULL,
-      label_size = 4.5, 
-      label_pos = "in",
-      label_threshold = 10) +
-  theme(legend.position = "inside",
-        legend.position.inside = c(0.85, 0.5),
-        legend.title = element_blank())
+
+prey_demographics_summary <- prey_demographics %>%
+  group_by(Carcass.species, Carcass.age, Carcass.sex) %>%
+  summarize(Deployments = n(), .groups = 'drop')
+
+# Age and sex stacked bar chart for Mule Deer
+ggplot(prey_demographics_summary %>% filter(Carcass.species == "Mule Deer"), aes(x = Carcass.age, y = Deployments, fill = Carcass.sex)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Observed Kills by Prey Age and Sex (Mule Deer)",
+       x = "Age Class",
+       y = "Number of Observed Kills",
+       fill = "Sex") +
+  scale_fill_manual(values = c("Female" = "#FF8C00", "Male" = "#2E8B57", "Unknown" = "grey" )) +
+  theme_minimal() +
+  theme(legend.justification = c("right", "top"),
+        legend.key.size = unit(1, "cm"),
+        legend.text = element_text(size = 10)) +
+  geom_text(aes(label = ifelse(Carcass.sex == "Unknown", "", Deployments)),
+            position = position_stack(vjust = 1),
+            vjust = -0.5,
+            color = "black")
+
+# Age and sex stacked bar chart for Elk
+ggplot(prey_demographics_summary %>% filter(Carcass.species == "Elk"), aes(x = Carcass.age, y = Deployments, fill = Carcass.sex)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Observed Kills by Prey Age and Sex (Elk)",
+       x = "Age Class",
+       y = "Number of Observed Kills",
+       fill = "Sex") +
+  scale_fill_manual(values = c("Female" = "#FF8C00", "Male" = "#2E8B57", "Unknown" = "grey" )) +
+  theme_minimal() +
+  theme(legend.justification = c("right", "top"),
+        legend.key.size = unit(1, "cm"),
+        legend.text = element_text(size = 10)) +
+  geom_text(aes(label = ifelse(Carcass.sex == "Unknown", "", Deployments)),
+            position = position_stack(vjust = 1),
+            vjust = -0.5,
+            color = "black")
+
+##############################################
+# 3. Bar Charts: Scavenger species breakdown #
+##############################################
+
+scavenger_species_breakdown <- deployments_with_subjects %>%
+  select(Deployment.id, Species) %>%
+  unnest(Species) %>%
+  mutate(Species = unlist(Species))
+
+species_classes <- list(
+  "Large Carnivore" = c(
+    "PUMA", "BEAR black"
+  ),
+  Mesocarnivore = c(
+    "COYOTE", "BOBCAT", "FISHER", "FOX gray"
+  ),
+  Omnivore = c(
+    "RACCOON", "RAT", "MOUSE", "SKUNK striped", "SKUNK western spotted"
+  ),
+  Bird = c(
+    "BIRD (other)", "EAGLE bald", "EAGLE golden", 
+    "FLICKER northern", "GOSHAWK northern", "GROUSE", 
+    "HAWK red-tailed", "JAY scrub", "JAY Stellar's", 
+    "MAGPIE", "ROBIN American", "RAVEN common", 
+    "THRUSH varied", "VULTURE turkey", "WOODPECKER"
+  ),
+  "Human / Domestic" = c(
+    "HUMAN", "COW domestic", "DOG domestic"
+  ),
+  Herbivore = c(
+    "CHIPMUNK", "DEER Mule", "ELK", "LAGOMORPH",
+    "SQUIRREL California ground", "SQUIRREL Douglas", 
+    "SQUIRREL golden-mantled ground", "SQUIRREL western gray"
+  ),
+  Reptile = c("REPTILE"),
+  Other = c("UNKNOWN", "OTHER")
+)
+
+scavenger_species_breakdown <- scavenger_species_breakdown %>%
+  mutate(Class = unlist(lapply(Species, function(x) {
+    # Find the class based on species
+    class <- names(species_classes)[sapply(species_classes, function(species) x %in% species)]
+    if (length(class) == 0) return(NA) else return(class)
+  })))
+
