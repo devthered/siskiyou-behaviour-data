@@ -4,9 +4,18 @@ library(ggpie)
 library(ggplot2)
 library(scales)
 
+source("datetime_string_fns.R")
+
+# Running these produces the boris (behaviour) and deployment data for this file to work with
+# Some take a long time and require external information, so outputs should be stored as CSVs
+#source("combine_boris_csvs.R")
+#source("extract_mp4_metadata.R")
+#source("setup_boris_data.R")
+#source("prune_boris_and_deployments.R")
+
 # README
 # This file generates figures for the Data Summary Report.
-# Requires outputs from a number of files
+# Requires outputs from a number of files, listed above
 
 #####################################
 # 1. Barchart: Deployments per puma #
@@ -54,27 +63,7 @@ age_list <- c("Calf", "Fawn", "Yearling", "Adult", "Unknown")
 sex_list <- c("Unknown", "Male", "Female")
 
 prey_demographics <- deployments %>%
-  select(Deployment.id, Puma.name, Carcass.species, Carcass.age.sex) %>%
-  mutate(Carcass.species = factor(ifelse(is.na(Carcass.species), 
-                                         "Unknown", 
-                                         ifelse(tolower(trimws(Carcass.species)) == "mule deer", 
-                                                "Mule Deer", "Elk")), 
-                                  levels = species_list)) %>%
-  mutate(Carcass.age.sex = tolower(trimws(Carcass.age.sex))) %>%
-  mutate(Carcass.age = factor(ifelse(grepl("adult", Carcass.age.sex), 
-                                     "Adult", 
-                                     ifelse(grepl("yearling", Carcass.age.sex), 
-                                            "Yearling", 
-                                            ifelse(grepl("fawn", Carcass.age.sex), 
-                                                   "Fawn", 
-                                                   ifelse(grepl("calf", Carcass.age.sex), 
-                                                          "Calf", "Unknown")))), 
-                              levels = age_list)) %>%
-  mutate(Carcass.sex = factor(ifelse(grepl("male|buck|bull", Carcass.age.sex), 
-                                     "Male", 
-                                     ifelse(grepl("female|doe|cow", Carcass.age.sex), 
-                                           "Female", "Unknown")), 
-                              levels = sex_list)) %>%
+  select(Deployment.id, Puma.name, Carcass.species, Carcass.age, Carcass.sex) %>%
   arrange(Carcass.species, Carcass.age, Carcass.sex)
 
 # Species pie chart
@@ -139,6 +128,9 @@ ggplot(prey_demographics_summary %>% filter(Carcass.species == "Elk"), aes(x = C
 ##############################################
 # 3. Bar Charts: Scavenger species breakdown #
 ##############################################
+
+deployments_with_subjects <- deployments %>%
+  left_join(subjects_by_deployment, by = "Deployment.id")
 
 scavenger_species_breakdown <- deployments_with_subjects %>%
   select(Deployment.id, Species) %>%
@@ -238,24 +230,109 @@ class_counts = scavenger_species_breakdown %>%
 # 4. Box Plots: Puma feeding behaviour #
 ########################################
 
-# NOTE: you need deployments_with_all_stats (from main.R) for this
-deployments_with_all_stats <- read.csv("deployments_with_all_stats.csv") %>%
-  filter(N.observations > 0)
+##########################
+# 4a. Combine all stats #
+#########################
 
-boxplot(Total.Feeding.Time..m. ~ Bear.present, 
-        data = deployments_with_all_stats,
+source("summarize_subjects.R")
+source("summarize_puma_feeding.R")
+source("summarize_puma_non_feeding_behaviours.R")
+source("summarize_carnivore_feeding_times.R") 
+
+deployments_summary_stats <- deployments %>%
+  left_join(subjects_by_deployment %>%
+              select(-Pumas, -Species),
+            by = "Deployment.id") %>%
+  left_join(puma_non_feeding_behaviours %>%
+              select(Deployment.id, `Total Alert Behaviour Counts`),
+            by = "Deployment.id") %>%
+  left_join(puma_feeding_times %>%
+              select(Deployment.id, `Total Feeding Time (m) Pumas`),
+            by = "Deployment.id") %>%
+  left_join(non_puma_feeding_times %>%
+              select(Deployment.id, `Total Feeding Time (m) Black Bears`, `Total Feeding Time (m) Scavengers`),
+            by = "Deployment.id") %>%
+  mutate(across(c(
+    "Species.richness",
+    "N.kittens",
+    "Total Alert Behaviour Counts",
+    "Total Feeding Time (m) Pumas",
+    "Total Feeding Time (m) Black Bears", 
+    "Total Feeding Time (m) Scavengers",
+  ), ~ ifelse(is.na(.), 0, .))) %>%
+  mutate(across(c(
+    "Uncollared.puma.present", "Bear.present", "Bobcat.present",                         
+    "Coyote.present", "Puma.present" 
+  ), ~ ifelse(is.na(.), FALSE, .)))
+
+write.csv(deployments_summary_stats, "deployments_summary_stats.csv", row.names = FALSE)
+
+concat <- function(x) {
+  ifelse(identical(x, character(0)),
+         "",
+         do.call(paste, c(as.list(x), sep="; ")))
+}
+
+deployments_all_stats <- deployments %>%
+  left_join(subjects_by_deployment,
+            by = "Deployment.id") %>%
+  left_join(puma_non_feeding_behaviours,
+            by = "Deployment.id") %>%
+  left_join(puma_feeding_times,
+            by = "Deployment.id") %>%
+  left_join(non_puma_feeding_times,
+            by = "Deployment.id") %>%
+  mutate(Pumas = sapply(Pumas, concat)) %>%
+  mutate(Species = sapply(Species, concat)) %>%
+  select(-Unknown)
+
+write.csv(deployments_all_stats, "deployments_all_stats.csv", row.names = FALSE)
+
+#####################
+# 4b. Make boxplots #
+#####################
+
+boxplot(`Total Feeding Time (m) Pumas` ~ Bear.present, 
+        data = deployments_summary_stats %>%
+          filter(N.observations > 0),
         xlab = "",
         names = c("Black bear absent", "Black bear present"),
         ylab = "Total Puma Feeding Time (minutes)")
-boxplot(Total.Alert.Behaviour.Counts ~ Bear.present,
-        data = deployments_with_all_stats,
+boxplot(`Total Feeding Time (m) Pumas` ~ Carcass.species, 
+        data = deployments_summary_stats %>%
+          filter(N.observations > 0),
+        xlab = "",
+        ylab = "Total Puma Feeding Time (minutes)")
+boxplot(`Total Alert Behaviour Counts` ~ Bear.present,
+        data = deployments_summary_stats %>%
+          filter(N.observations > 0),
         xlab = "",
         names = c("Black bear absent", "Black bear present"),
         ylab = "Total Puma Alert Behaviour Counts")
-boxplot(Species.richness ~ Bear.present,
-        data = deployments_with_all_stats,
+boxplot(ifelse(Bear.present, Species.richness - 1, Species.richness) ~ Bear.present,
+        data = deployments_summary_stats %>%
+          filter(N.observations > 0),
         xlab = "",
         names = c("Black bear absent", "Black bear present"),
-        ylab = "Scavenger species richness")
+        ylab = "Scavenger species richness (excluding bears)")
+
+ggplot(deployments_summary_stats %>%
+         filter(`Total Feeding Time (m) Black Bears` > 0),
+       aes(x = `Total Feeding Time (m) Black Bears`, y = `Total Feeding Time (m) Pumas`)) +
+  geom_point()
+
+ggplot(deployments_summary_stats %>%
+         filter(N.observations > 0),
+       aes(x = `Total Feeding Time (m) Black Bears`, y = `Total Feeding Time (m) Scavengers`)) +
+  geom_point()
+
+###########################
+# 4c. Export to shapefile #
+###########################
+
+library(sf)
+shapefile <- deployments_summary_stats %>%
+  st_as_sf(coords = c("Long", "Lat"), crs = 4326)
+st_write(shapefile, "deployments.shp")
 
 

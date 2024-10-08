@@ -34,4 +34,5 @@ puma_feeding_times <- boris_data %>%
                 "Std Dev Feeding Bout Duration (s)"),
               values_fill = 0,
               names_sep = " ") %>%
-  mutate(`Total Feeding Time (m)` = (`Total Feeding Time (s) Puma` + `Total Feeding Time (s) Kitten`) / 60)
+  mutate(`Total Feeding Time (m) Pumas` = (`Total Feeding Time (s) Puma` + `Total Feeding Time (s) Kitten`) / 60)
+  

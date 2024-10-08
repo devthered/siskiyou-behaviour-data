@@ -51,7 +51,30 @@ deployment_metadata <- read.csv(DEPLOYMENT_METADATA_FILENAME) %>%
     Setup.crew = Setup_crew,
     General.location = General.Location,
     Comments) %>%
-  arrange(Deployment.id)
+  arrange(Deployment.id) %>%
+  
+  # clean up prey demographics
+  mutate(Carcass.species = factor(ifelse(is.na(Carcass.species), 
+                                         "Unknown", 
+                                         ifelse(tolower(trimws(Carcass.species)) == "mule deer", 
+                                                "Mule Deer", "Elk")), 
+                                  levels = species_list)) %>%
+  mutate(Carcass.age.sex = tolower(trimws(Carcass.age.sex))) %>%
+  mutate(Carcass.age = factor(ifelse(grepl("adult", Carcass.age.sex), 
+                                     "Adult", 
+                                     ifelse(grepl("yearling", Carcass.age.sex), 
+                                            "Yearling", 
+                                            ifelse(grepl("fawn", Carcass.age.sex), 
+                                                   "Fawn", 
+                                                   ifelse(grepl("calf", Carcass.age.sex), 
+                                                          "Calf", "Unknown")))), 
+                              levels = age_list)) %>%
+  mutate(Carcass.sex = factor(ifelse(grepl("male|buck|bull", Carcass.age.sex), 
+                                     "Male", 
+                                     ifelse(grepl("female|doe|cow", Carcass.age.sex), 
+                                            "Female", "Unknown")), 
+                              levels = sex_list)) %>%
+  select(-Carcass.age.sex)
 
 boris_data <- read.csv("boris_tidy.csv")
 
