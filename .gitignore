@@ -1,4 +1,7 @@
 .DS_store
 .Rhistory
 .RData
-.RData
+deployments.dbf
+deployments.prj
+deployments.shp
+deployments.shx
