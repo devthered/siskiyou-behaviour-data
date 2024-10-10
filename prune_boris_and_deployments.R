@@ -19,6 +19,10 @@ source("datetime_string_fns.R")
 
 DEPLOYMENT_METADATA_FILENAME = "XR6 Cameras.csv"
 
+species_list = c("Mule Deer", "Elk", "Unknown")
+age_list = c("Calf", "Fawn", "Yearling", "Adult", "Unknown")
+sex_list = c("Female", "Male", "Unknown")
+
 # Get and clean up metadata from deployments
 deployment_metadata <- read.csv(DEPLOYMENT_METADATA_FILENAME) %>%
   # fix error in CSV
@@ -123,7 +127,8 @@ boris_data_pruned <- boris_data %>%
   filter(Deployment.id %in% deployment_data$Deployment.id) %>%
   # remove behaviours past the cutoff time (21 days)
   left_join(deployment_data %>% select(Deployment.id, Setup.date), by = "Deployment.id") %>%
-  filter(is_before(Video.start, get_behaviour_time_cutoff(Setup.date)))
+  filter(is_before(Video.start, get_behaviour_time_cutoff(Setup.date))) %>%
+  select(-Behaviour.start, -Behaviour.end, -Setup.date)
 
 # recreate deployment data
 pruned_deployments_summary <- boris_data_pruned %>%

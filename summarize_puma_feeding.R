@@ -11,10 +11,10 @@ boris_data <- read.csv("boris_data_pruned.csv")
 
 puma_feeding_times <- boris_data %>%
   # consolidate puma and kitten behaviours
-  mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "Puma", Subject)) %>%
-  mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "Kitten", Subject)) %>%
+  mutate(Subject = ifelse(grepl("\\d+[MF]|PUMA.*", Subject), "Adult Pumas", Subject)) %>%
+  mutate(Subject = ifelse(grepl("KITTEN[123]", Subject), "Kittens", Subject)) %>%
   # filter out non-puma behaviours
-  filter(Subject == "Puma" | Subject == "Kitten") %>%
+  filter(Subject == "Adult Pumas" | Subject == "Kittens") %>%
   # interested only in feeding
   filter(Behaviour == "feed") %>%
   # get statistics on feeding times
@@ -34,5 +34,5 @@ puma_feeding_times <- boris_data %>%
                 "Std Dev Feeding Bout Duration (s)"),
               values_fill = 0,
               names_sep = " ") %>%
-  mutate(`Total Feeding Time (m) Pumas` = (`Total Feeding Time (s) Puma` + `Total Feeding Time (s) Kitten`) / 60)
+  mutate(`Total Feeding Time (m) Pumas` = (`Total Feeding Time (s) Adult Pumas` + `Total Feeding Time (s) Kittens`) / 60)
   

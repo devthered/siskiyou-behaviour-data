@@ -236,7 +236,6 @@ class_counts = scavenger_species_breakdown %>%
 
 source("summarize_puma_feeding.R")
 source("summarize_puma_non_feeding_behaviours.R")
-source("summarize_carnivore_feeding_times.R")
 
 concat <- function(x) {
   ifelse(identical(x, character(0)),
@@ -251,16 +250,11 @@ deployments_all_stats <- deployments %>%
             by = "Deployment.id") %>%
   left_join(puma_feeding_times,
             by = "Deployment.id") %>%
-  left_join(non_puma_feeding_times,
-            by = "Deployment.id") %>%
   mutate(Pumas = sapply(Pumas, concat)) %>%
   mutate(Species = sapply(Species, concat)) %>%
-  select(-Unknown) %>%
-  mutate(across(c("Species.richness"                     , "N.kittens"                   , "Kitten alert"                      , "Kitten bed/rest"              ,            "Kitten cache"                       ,     
-                  "Kitten defend"                        , "Kitten groom"                , "Kitten mark"                       , "Kitten play"                  ,            "Puma alert"                         ,     
-                  "Puma bed/rest"                        , "Puma cache"                  , "Puma defend"                       , "Puma groom"                   ,            "Puma mark"                          ,     
-                  "Puma play"                            , "Total Alert Behaviour Counts", "Total Feeding Time (s) Puma"       , "Total Feeding Time (s) Kitten",            "Mean Feeding Bout Duration (s) Puma",     
-                  "Mean Feeding Bout Duration (s) Kitten", "Total Feeding Time (m) Pumas", "Total Feeding Time (m) Black Bears", "Total Feeding Time (m) Scavengers"),
+  mutate(across(c("Species.richness",                       "N.kittens",                      "Total Alert Behaviour Counts", 
+                  "Total Feeding Time (s) Adult Pumas",     "Total Feeding Time (s) Kittens", "Mean Feeding Bout Duration (s) Adult Pumas",   
+                  "Mean Feeding Bout Duration (s) Kittens", "Total Feeding Time (m) Pumas"),
                 function(x) ifelse(is.na(x), 0, x))) %>%
   mutate(across(c("Coyote.present", "Puma.present", "Uncollared.puma.present", "Bear.present", "Bobcat.present"),
                 function(x) ifelse(is.na(x), FALSE, x)))
@@ -274,14 +268,21 @@ write.csv(deployments_all_stats, "deployments_all_stats.csv", row.names = FALSE)
 boxplot(`Total Feeding Time (m) Pumas` ~ Bear.present, 
         data = deployments_all_stats %>%
           filter(N.observations > 0),
-        xlab = "",
-        names = c("Black bear absent", "Black bear present"),
+        xlab = "Black bear scavenging",
+        names = c("Absent", "Present"),
         ylab = "Total Puma Feeding Time (minutes)")
-boxplot(`Total Feeding Time (m) Pumas` ~ Carcass.species, 
+boxplot(`Mean Feeding Bout Duration (s) Adult Pumas` ~ Bear.present, 
         data = deployments_all_stats %>%
           filter(N.observations > 0),
-        xlab = "",
-        ylab = "Total Puma Feeding Time (minutes)")
+        xlab = "Black bear scavenging",
+        names = c("Absent", "Present"),
+        ylab = "Mean Feeding Bout Duration (seconds)")
+boxplot(`Total Alert Behaviour Counts` ~ Bear.present, 
+        data = deployments_all_stats %>%
+          filter(N.observations > 0),
+        xlab = "Black bear scavenging",
+        names = c("Absent", "Present"),
+        ylab = "Total Puma Alert Behaviour Counts")
 
 ###########################
 # 4c. Export to shapefile #

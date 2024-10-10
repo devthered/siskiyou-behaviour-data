@@ -39,4 +39,8 @@ puma_non_feeding_behaviours <- boris_data %>%
   group_by(Deployment.id) %>%
   summarise(across(everything(), \(x) sum(x, na.rm = TRUE))) %>%
   ungroup() %>%
-  mutate(`Total Alert Behaviour Counts` = `Puma alert` + `Kitten alert`)
+  mutate(`Total Alert Behaviour Counts` = `Puma alert` + `Kitten alert`) %>%
+  select(-`Kitten alert`,  -`Kitten bed/rest`, -`Kitten cache`,     
+         -`Kitten defend`, -`Kitten groom`,    -`Kitten mark`, -`Kitten play`, -`Puma alert`,     
+         -`Puma bed/rest`, -`Puma cache`,      -`Puma defend`, -`Puma groom`, -`Puma mark`,     
+         -`Puma play`)
