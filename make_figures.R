@@ -226,13 +226,9 @@ class_counts = scavenger_species_breakdown %>%
   count(Class)
 
 
-########################################
-# 4. Box Plots: Puma feeding behaviour #
-########################################
-
-##############################################
-# 4a. Combine all stats, including behaviour #
-##############################################
+############################################
+# 4 Combine all stats, including behaviour #
+############################################
 
 source("summarize_puma_feeding.R")
 source("summarize_puma_non_feeding_behaviours.R")
@@ -261,32 +257,98 @@ deployments_all_stats <- deployments %>%
 
 write.csv(deployments_all_stats, "deployments_all_stats.csv", row.names = FALSE)
 
-#####################
-# 4b. Make boxplots #
-#####################
 
-boxplot(`Total Feeding Time (m) Pumas` ~ Bear.present, 
-        data = deployments_all_stats %>%
-          filter(N.observations > 0),
-        xlab = "Black bear scavenging",
-        names = c("Absent", "Present"),
-        ylab = "Total Puma Feeding Time (minutes)")
-boxplot(`Mean Feeding Bout Duration (s) Adult Pumas` ~ Bear.present, 
-        data = deployments_all_stats %>%
-          filter(N.observations > 0),
-        xlab = "Black bear scavenging",
-        names = c("Absent", "Present"),
-        ylab = "Mean Feeding Bout Duration (seconds)")
-boxplot(`Total Alert Behaviour Counts` ~ Bear.present, 
-        data = deployments_all_stats %>%
-          filter(N.observations > 0),
-        xlab = "Black bear scavenging",
-        names = c("Absent", "Present"),
-        ylab = "Total Puma Alert Behaviour Counts")
+########################################
+# 5. Box Plots: Puma feeding behaviour #
+########################################
 
-###########################
-# 4c. Export to shapefile #
-###########################
+ggplot(deployments_all_stats %>%
+         filter(`Total Feeding Time (m) Pumas` > 0),
+       aes(x=Bear.present, y=`Total Feeding Time (m) Pumas`)) +
+  geom_boxplot(outlier.shape = NA, fill = "lightgrey") +
+  geom_point(aes(color = Bear.present), 
+             position=position_jitterdodge(jitter.width = NULL,
+                                           jitter.height = 0,
+                                           dodge.width = 0.75,
+                                           seed = NA)) +
+  labs(x = 'Black bear presence', y = 'Total Puma Feeding Time (minutes)') +
+  scale_x_discrete(labels = c("FALSE" = "Absent", "TRUE" = "Present")) +
+  scale_color_manual(values = c("FALSE" = "#FF8C00", "TRUE" = "#2E8B57")) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplot(deployments_all_stats %>%
+         filter(`Mean Feeding Bout Duration (s) Adult Pumas` > 0),
+       aes(x=Bear.present, y=`Mean Feeding Bout Duration (s) Adult Pumas`)) +
+  geom_boxplot(outlier.shape = NA, fill = "lightgrey") +
+  geom_point(aes(color = Bear.present), 
+             position=position_jitterdodge(jitter.width = NULL,
+                                           jitter.height = 0,
+                                           dodge.width = 0.75,
+                                           seed = NA)) +
+  labs(x = 'Black bear presence', y = 'Mean Adult Puma Feeding Bout Duration (seconds)') +
+  scale_x_discrete(labels = c("FALSE" = "Absent", "TRUE" = "Present")) +
+  scale_color_manual(values = c("FALSE" = "#FF8C00", "TRUE" = "#2E8B57")) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplot(deployments_all_stats %>%
+         filter(`Total Alert Behaviour Counts` > 0),
+       aes(x=Bear.present, y=`Total Alert Behaviour Counts`)) +
+  geom_boxplot(outlier.shape = NA, fill = "lightgrey") +
+  geom_point(aes(color = Bear.present), 
+             position=position_jitterdodge(jitter.width = NULL,
+                                           jitter.height = 0,
+                                           dodge.width = 0.75,
+                                           seed = NA)) +
+  labs(x = 'Black bear presence', y = 'Total Puma Alert Behaviour Counts') +
+  scale_x_discrete(labels = c("FALSE" = "Absent", "TRUE" = "Present")) +
+  scale_color_manual(values = c("FALSE" = "#FF8C00", "TRUE" = "#2E8B57")) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+##################################
+# 5. Box Plots: Species richness #
+##################################
+
+puma_order = c("1F", "8F", "9F", "13F", "3M", "4M", "5M", "7M", "12M", "14M")
+ggplot(deployments_all_stats %>%
+         filter(Species.richness > 0) %>%
+         mutate(Puma.name = factor(Puma.name, levels = puma_order)),
+       aes(x=Puma.name, y=Species.richness)) +
+  geom_boxplot(outlier.shape = NA, fill = "lightgrey") +
+  geom_point(aes(color = Puma.name), 
+             position=position_jitterdodge(jitter.width = 3,
+                                           jitter.height = 0,
+                                           dodge.width = 0.75,
+                                           seed = NA)) +
+  labs(x = 'Puma', y = 'Species richness at carcass') +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplot(deployments_all_stats %>%
+         filter(Species.richness > 0) %>%
+         mutate(Species.richness.non.bear = ifelse(Bear.present, Species.richness - 1, Species.richness)),
+       aes(x=Bear.present, y=Species.richness.non.bear)) +
+  geom_boxplot(outlier.shape = NA, fill = "lightgrey") +
+  geom_point(aes(color = Bear.present), 
+             position=position_jitterdodge(jitter.width = NULL,
+                                           jitter.height = 0,
+                                           dodge.width = 0.75,
+                                           seed = NA)) +
+  labs(x = 'Black bear presence', y = 'Species richness at carcass (excluding bears)') +
+  scale_x_discrete(labels = c("FALSE" = "Absent", "TRUE" = "Present")) +
+  scale_color_manual(values = c("FALSE" = "#FF8C00", "TRUE" = "#2E8B57")) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+  
+
+##########################
+# 6. Export to shapefile #
+##########################
 
 # library(sf)
 # shapefile <- deployments_summary_stats %>%
